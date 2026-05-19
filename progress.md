@@ -69,7 +69,15 @@ See `findings.md` § 5 (Resolved Decisions D1–D13) and `claude.md` § 17.
 - Two GitHub PATs were pasted in chat to enable the push. User instructed to rotate both at github.com/settings/tokens.
 
 ### Blocked / awaiting user
-- New Supabase project ref in `af-south-1`.
+- ~~New Supabase project ref in `af-south-1`.~~ → see Self-Annealing event #2 below.
+
+### Self-Annealing event #2 — region af-south-1 unavailable
+- **Observed:** South Africa (Cape Town) region not available for this Supabase organisation.
+- **Root cause:** Supabase has not enabled af-south-1 for the org. No other African regions exist.
+- **Action:** D4 amended from `af-south-1` to `eu-west-1` (Ireland). Justification: GDPR sits under POPIA Chapter 9 as adequate cross-border destination.
+- **Compensating control:** Phase 14 Hardening checklist updated to require explicit POPIA cross-border disclosure on /privacy, /terms, signup consent, and DPA link.
+- **Documentation updates:** claude.md §17.2, findings.md §5 (D4 row + new follow-up bullet), development_phases.md Phase 14 expanded.
+- **Awaiting:** new Supabase project ref in eu-west-1.
 
 ### Next
 1. Receive new project ref.

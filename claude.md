@@ -122,7 +122,8 @@ See Section 3.1–3.3 of the master prompt. Detailed JSON schemas will be drafte
 - Next.js 14+ (App Router) + TypeScript + TailwindCSS.
 - Supabase: Auth, Postgres, Storage, RLS, Edge Functions (for scheduled reminders).
 - Hosting: Vercel.
-- Region: **af-south-1 (Cape Town)** for both Supabase Postgres and Storage (latency + POPIA residency).
+- Region: **eu-west-1 (Ireland)** for both Supabase Postgres and Storage.
+  - *Amended 2026-05-19* (Self-Annealing event #2): originally locked as `af-south-1 (Cape Town)` (D4), but Supabase has not enabled Cape Town for this organisation. Eu-west-1 sits under GDPR and is generally accepted as adequate under POPIA Chapter 9 (cross-border transfer to a country with a similar level of data protection). The platform's Privacy Notice MUST explicitly disclose data residency, processing purpose, and the GDPR adequacy basis (added to Phase 14 Hardening checklist).
 - PDF: `@react-pdf/renderer` (chosen for deterministic, server-side rendering — confirm in handshake test).
 - DOCX: `docx` npm package.
 - Zip: `archiver` npm package (for full registration pack export).

@@ -125,7 +125,13 @@ Each phase has a single **exit gate**: a measurable, demoable outcome. No phase 
 - Image optimisation, code splitting audit.
 - Error logging (Sentry or Supabase logs).
 - Backup verification (point-in-time restore tested).
-- POPIA notice + Terms drafted.
+- **POPIA notice + Terms drafted** — per D4 amendment (2026-05-19), the Privacy Notice MUST explicitly disclose:
+  - Data residency = Ireland (Supabase eu-west-1)
+  - GDPR adequacy basis under POPIA Chapter 9 for cross-border transfer
+  - Personal information collected (name, email, evidence files, professional records)
+  - Cross-border transfer clause in Terms of Service
+  - Data Processing Addendum link from Settings → Data → POPIA
+  - User consent on signup for cross-border processing
 - Load test: 50 concurrent users.
 
 ## Phase 15 — Production launch

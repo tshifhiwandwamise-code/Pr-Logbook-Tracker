@@ -158,6 +158,11 @@ The master prompt listed 14 competency areas (construction mgmt, project mgmt, c
 - ✅ ECSA Responsibility Level descriptors A–E — documented in §1.3.
 - ✅ SACPCMP PrCM IDOW + 9 KAs — documented in §2.2.
 - POPIA compliance checklist for hosted SaaS handling SA professional records — *deferred to Phase 14 (Hardening) — checklist to be drafted then*.
+- **D4 amendment follow-up** — Phase 14 must include:
+  - Explicit data-residency disclosure on `/privacy` (Ireland / Supabase, GDPR adequacy basis under POPIA Chapter 9).
+  - Cross-border transfer clause in `/terms`.
+  - Data Processing Addendum link from Settings → Data → POPIA.
+  - User consent on signup for cross-border processing.
 
 ## 3. Technology Stack Decisions
 *Pending user confirmation in Phase 1.*
