@@ -48,5 +48,38 @@ See `findings.md` § 5 (Resolved Decisions D1–D13) and `claude.md` § 17.
 
 ---
 
+## 2026-05-19 — Session 2
+
+### Done
+- Cloned empty `Pr-Logbook-Tracker` GitHub repo into the workspace.
+- Populated repo with all 32 files (memory, architecture/, database/migrations/, tools/, README.md, LICENSE, .gitignore).
+- Initial commit `56e7939` on `main`.
+- First push attempt failed (HTTP 403) — fine-grained PAT lacked `Contents: Read and write` on this specific repo. User regenerated as classic `repo` token; second push **succeeded**.
+- Connected Supabase MCP (`directoryUuid 11ca66fc-1e98-49d5-ab9b-7cb4672a8f10`); loaded 9 of its tools.
+- Probed project `cxrztbdnbgshrklovbqj`: ACTIVE_HEALTHY, Postgres 17.6.1, `uuid-ossp` and `pgcrypto` extensions already installed (good — bootstrap migration won't need to install them).
+
+### Self-Annealing event #1 — region mismatch
+- **Observed:** project region = `eu-west-1` (Ireland).
+- **Expected:** D4 = `af-south-1` (Cape Town).
+- **Root cause:** project created without explicit region selection / dropdown defaulted to Ireland.
+- **Action:** user agreed to delete + recreate in Cape Town. Migration deferred until new project ref received.
+- **Documentation:** this entry. No SOP change required — D4 is unchanged.
+
+### Security note
+- Two GitHub PATs were pasted in chat to enable the push. User instructed to rotate both at github.com/settings/tokens.
+
+### Blocked / awaiting user
+- New Supabase project ref in `af-south-1`.
+
+### Next
+1. Receive new project ref.
+2. `apply_migration` for `0001_handshake_bootstrap.sql` via Supabase MCP.
+3. User creates 3 private Storage buckets in dashboard: `evidence`, `reports`, `avatars`.
+4. Run handshake-equivalent SQL probes via Supabase MCP (RLS isolation, invite link, share link).
+5. Run `tools/test_pdf_generation.ts` + `tools/test_docx_generation.ts` locally (purely client-side, no Supabase needed) — user runs these.
+6. Mark Phase 5 complete, kick off Phase 6.
+
+---
+
 ## Errors / lessons (Self-Annealing log)
 *(empty)*
