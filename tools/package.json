@@ -1,0 +1,34 @@
+{
+  "name": "prip-handshake-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Phase 5 handshake tests for the Professional Registration Intelligence Platform.",
+  "scripts": {
+    "test:handshakes": "tsx run_all.ts",
+    "test:handshakes:cleanup": "tsx cleanup.ts",
+    "test:handshake:connection": "tsx test_supabase_connection.ts",
+    "test:handshake:auth": "tsx test_auth_flow.ts",
+    "test:handshake:storage": "tsx test_storage_upload.ts",
+    "test:handshake:file-metadata": "tsx test_file_metadata.ts",
+    "test:handshake:pdf": "tsx test_pdf_generation.ts",
+    "test:handshake:docx": "tsx test_docx_generation.ts",
+    "test:handshake:indexing": "tsx test_evidence_indexing.ts",
+    "test:handshake:rls": "tsx test_rls_permissions.ts",
+    "test:handshake:invite": "tsx test_invite_link.ts",
+    "test:handshake:share": "tsx test_shared_report_link.ts"
+  },
+  "dependencies": {
+    "@react-pdf/renderer": "^4.0.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "docx": "^9.0.0",
+    "dotenv": "^16.4.0",
+    "react": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
