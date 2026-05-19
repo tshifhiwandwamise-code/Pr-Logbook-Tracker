@@ -2,6 +2,11 @@
 -- Minimum schema required for the Phase 5 handshake test pack.
 -- The full 23-table migration is Phase 1 of the production build (see development_phases.md).
 -- Safe to re-run: every object uses IF NOT EXISTS / OR REPLACE where Postgres permits.
+--
+-- This file reflects the final, applied state on project wnwkihbrteknhofstbze
+-- after Self-Annealing events #3 (immutable wrapper for GIN),
+-- #4 (has_workspace_role grant restoration), #5 (enum cast in accept_invite_link).
+-- See progress.md for the full incident log.
 
 set search_path = public, extensions;
 create extension if not exists pgcrypto;
@@ -42,6 +47,13 @@ create table if not exists workspace_members (
 );
 
 -- ─── permission helper ───────────────────────────────────────────────────────
+-- SECURITY DEFINER so its body bypasses the recursive RLS check on
+-- workspace_members. EXECUTE granted to anon/authenticated because RLS
+-- evaluation runs in the caller's role context. The Supabase advisor
+-- "anon_security_definer_function_executable" is a known false positive for
+-- this canonical RLS-helper pattern — the function body only reads membership
+-- for the *currently authenticated* user (auth.uid()), so a caller learns
+-- nothing they could not already query through RLS itself.
 create or replace function has_workspace_role(ws uuid, required_roles workspace_role[])
 returns boolean
 language sql stable security definer
@@ -55,6 +67,13 @@ as $$
       and role = any(required_roles)
   );
 $$;
+
+grant execute on function public.has_workspace_role(uuid, public.workspace_role[])
+  to anon, authenticated;
+
+comment on function public.has_workspace_role(uuid, public.workspace_role[]) is
+  'RLS helper. SECURITY DEFINER + execute granted to anon/authenticated by design.
+   See file header for rationale.';
 
 -- ─── evidence (subset for handshakes) ────────────────────────────────────────
 create table if not exists evidence_files (
@@ -71,10 +90,29 @@ create table if not exists evidence_files (
   updated_at timestamptz not null default now()
 );
 
--- tsvector search index
+-- Immutable wrapper so to_tsvector(...) qualifies for a functional GIN index.
+-- Direct `to_tsvector('english', coalesce(...) || ...)` in the index expression
+-- is rejected with 42P17 ("functions in index expression must be marked
+-- IMMUTABLE") on Supabase's Postgres 17 — even with an explicit ::regconfig
+-- cast. Wrapping it in a SQL function we *declare* IMMUTABLE is the canonical
+-- workaround, and is safe in practice because all underlying functions
+-- (coalesce, ||, array_to_string, to_tsvector with a fixed regconfig) ARE
+-- semantically immutable.
+create or replace function public.evidence_search_doc(
+  p_file_name text, p_description text, p_tags text[]
+) returns tsvector
+language sql immutable strict parallel safe
+set search_path = public, extensions
+as $$
+  select to_tsvector(
+    'english'::regconfig,
+    coalesce(p_file_name,'') || ' ' || coalesce(p_description,'') || ' ' || array_to_string(coalesce(p_tags,'{}'::text[]),' ')
+  );
+$$;
+
 create index if not exists evidence_files_search_idx
   on evidence_files
-  using gin (to_tsvector('english', coalesce(file_name,'') || ' ' || coalesce(description,'') || ' ' || array_to_string(tags,' ')));
+  using gin (public.evidence_search_doc(file_name, description, tags));
 
 -- ─── invite links ────────────────────────────────────────────────────────────
 create table if not exists invite_links (
@@ -121,24 +159,21 @@ create table if not exists shared_report_links (
 );
 
 -- ─── RLS ─────────────────────────────────────────────────────────────────────
-alter table workspaces enable row level security;
-alter table workspace_members enable row level security;
-alter table evidence_files enable row level security;
-alter table invite_links enable row level security;
-alter table monthly_reports enable row level security;
-alter table shared_report_links enable row level security;
+alter table workspaces           enable row level security;
+alter table workspace_members    enable row level security;
+alter table evidence_files       enable row level security;
+alter table invite_links         enable row level security;
+alter table monthly_reports      enable row level security;
+alter table shared_report_links  enable row level security;
 
--- workspaces: read if member
 drop policy if exists ws_read on workspaces;
 create policy ws_read on workspaces for select
   using ( has_workspace_role(id, array['owner','editor','viewer']::workspace_role[]) );
 
--- workspace_members: read if member of same workspace
 drop policy if exists wm_read on workspace_members;
 create policy wm_read on workspace_members for select
   using ( has_workspace_role(workspace_id, array['owner','editor','viewer']::workspace_role[]) );
 
--- evidence_files: read members, write owner+editor
 drop policy if exists ef_read on evidence_files;
 create policy ef_read on evidence_files for select
   using ( has_workspace_role(workspace_id, array['owner','editor','viewer']::workspace_role[]) );
@@ -146,13 +181,11 @@ drop policy if exists ef_write on evidence_files;
 create policy ef_write on evidence_files for insert
   with check ( has_workspace_role(workspace_id, array['owner','editor']::workspace_role[]) );
 
--- invite_links: owner-only
 drop policy if exists il_owner on invite_links;
 create policy il_owner on invite_links for all
   using ( has_workspace_role(workspace_id, array['owner']::workspace_role[]) )
   with check ( has_workspace_role(workspace_id, array['owner']::workspace_role[]) );
 
--- monthly_reports: read members, write owner+editor
 drop policy if exists mr_read on monthly_reports;
 create policy mr_read on monthly_reports for select
   using ( has_workspace_role(workspace_id, array['owner','editor','viewer']::workspace_role[]) );
@@ -160,15 +193,17 @@ drop policy if exists mr_write on monthly_reports;
 create policy mr_write on monthly_reports for insert
   with check ( has_workspace_role(workspace_id, array['owner','editor']::workspace_role[]) );
 
--- shared_report_links: owner+editor
 drop policy if exists srl_rw on shared_report_links;
 create policy srl_rw on shared_report_links for all
   using ( has_workspace_role(workspace_id, array['owner','editor']::workspace_role[]) )
   with check ( has_workspace_role(workspace_id, array['owner','editor']::workspace_role[]) );
 
 -- ─── RPC: accept invite link ─────────────────────────────────────────────────
+-- Note: `status` writes are cast to `invite_status` enum explicitly.
+-- Postgres does not implicitly cast text literals inside a UPDATE ... SET
+-- assignment for enum columns under plpgsql.
 create or replace function accept_invite_link(p_raw_token text)
-returns uuid -- returns workspace_id on success
+returns uuid
 language plpgsql security definer
 set search_path = public, extensions
 as $$
@@ -180,7 +215,7 @@ begin
   if not found then raise exception 'invite not found'; end if;
   if v_invite.status <> 'active' then raise exception 'invite not active'; end if;
   if v_invite.expires_at < now() then
-    update invite_links set status='expired' where id = v_invite.id;
+    update invite_links set status='expired'::invite_status where id = v_invite.id;
     raise exception 'invite expired';
   end if;
   if v_invite.uses_count >= v_invite.max_uses then raise exception 'invite exhausted'; end if;
@@ -192,12 +227,17 @@ begin
   update invite_links
     set uses_count = uses_count + 1,
         used_at    = coalesce(used_at, now()),
-        status     = case when uses_count + 1 >= max_uses then 'used' else 'active' end
+        status     = (case when uses_count + 1 >= max_uses then 'used' else 'active' end)::invite_status
     where id = v_invite.id;
 
   return v_invite.workspace_id;
 end;
 $$;
+
+comment on function public.accept_invite_link(text) is
+  'Public RPC. SECURITY DEFINER is intentional: needs to read auth.uid() and
+   mutate workspace_members across the trust boundary. Token is hashed input;
+   raw tokens never enter the database.';
 
 -- ─── RPC: resolve shared report link ─────────────────────────────────────────
 create or replace function resolve_shared_report(p_raw_token text)
@@ -222,6 +262,11 @@ begin
       from monthly_reports r where r.id = v_link.report_id;
 end;
 $$;
+
+comment on function public.resolve_shared_report(text) is
+  'Public RPC. SECURITY DEFINER intentional: allows resolving a shared report
+   via opaque token while enforcing login_required + expiry + revocation
+   checks inside the function.';
 
 -- grants for anon + authenticated to call the RPCs
 grant execute on function accept_invite_link(text) to authenticated;

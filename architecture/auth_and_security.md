@@ -164,6 +164,25 @@ All file access in the app uses **signed URLs** (1-hour TTL). No public bucket U
 ## 10. Audit triggers
 A single trigger function `log_audit_event()` attaches to every mutable table via `AFTER INSERT/UPDATE/DELETE` triggers, recording `action`, `entity_type`, `entity_id`, `auth.uid()`, and a redacted `metadata` jsonb diff.
 
+## 11. Working with Supabase advisors (added 2026-05-19 after Self-Annealing event #4)
+
+Supabase ships a database linter exposed via `mcp__…__get_advisors`. We run it after every DDL migration. **Not every warning is a real issue** — the linter cannot distinguish between an internal SECURITY DEFINER helper and a public-facing RPC.
+
+Known acceptable warnings for this codebase:
+
+| Lint code | Function | Why acceptable |
+|---|---|---|
+| `anon_security_definer_function_executable` / `authenticated_…` | `accept_invite_link` | Intentional public RPC. SECURITY DEFINER is required so the function can read `auth.uid()` and mutate `workspace_members` across the trust boundary. Token is hashed input; raw tokens never enter the database. |
+| `anon_security_definer_function_executable` / `authenticated_…` | `resolve_shared_report` | Intentional public RPC. SECURITY DEFINER is required so the function can enforce `login_required + expiry + revocation` checks before returning report data. |
+| `anon_security_definer_function_executable` / `authenticated_…` | `has_workspace_role` | RLS helper. SECURITY DEFINER allows the body to bypass the recursive RLS check on `workspace_members`. EXECUTE must be granted to anon/authenticated because RLS evaluation runs in the caller's role context. A malicious caller learns nothing they could not already query through RLS. |
+
+Required action when these warnings appear: confirm the function matches one of the rows above; if yes, add or verify the `COMMENT ON FUNCTION` that documents the design intent. Do not revoke EXECUTE without testing RLS — see Self-Annealing event #4 in progress.md for the cautionary tale.
+
+Lints that MUST always be fixed:
+- `function_search_path_mutable` — pin via `SET search_path = public, extensions` in every function definition.
+- Any `ERROR`-level lint.
+- Any new `SECURITY DEFINER` warning on a function not listed in the table above (review intent before granting EXECUTE).
+
 ---
 
-**Approval required:** roles, RLS patterns, invite flow, share flow, storage paths, POPIA approach.
+**Approval required:** roles, RLS patterns, invite flow, share flow, storage paths, POPIA approach, advisor policy.
