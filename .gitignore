@@ -44,3 +44,12 @@ supabase/.env
 
 # misc
 *.log
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Tailwind output
+public/build/

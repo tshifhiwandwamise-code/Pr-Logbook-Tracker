@@ -137,6 +137,51 @@ Coverage matrix:
 
 ### Phase 6 begins next session — kicking off Phase 0 (scaffold) + Phase 1 (full migration) immediately.
 
+---
+
+## 2026-05-19 — Session 3 (Phase 6 partial)
+
+### Done — Phase 6 / Phase-0 (Next.js scaffold)
+- `package.json`, `tsconfig.json`, `next.config.mjs`, `tailwind.config.ts`, `postcss.config.mjs`, `.eslintrc.json`, `.prettierrc`, `.env.local.example`
+- `app/layout.tsx` (root, dark default, skip-to-content, Inter font)
+- `app/page.tsx` (landing)
+- `app/login/page.tsx` (magic-link form — invite-only flow)
+- `app/dashboard/page.tsx` (placeholder + auth gate)
+- `app/auth/callback/route.ts` (OAuth/magic-link exchange)
+- `app/globals.css` (design tokens for both themes per D11)
+- `lib/supabase/client.ts`, `lib/supabase/server.ts`, `lib/supabase/middleware.ts`
+- `lib/utils/cn.ts`
+- `middleware.ts` (auth refresh on every request)
+- `vercel.json` (security headers, dub1 region)
+- `.github/workflows/ci.yml` (lint + typecheck + build + handshake-syntax-check)
+- `DEPLOY.md` (full Vercel playbook + service-role key handling)
+
+### Done — Phase 6 / Phase-1 (production schema)
+- Created `database/migrations/0002_v1_schema.sql` (~700 lines)
+- Applied to project `wnwkihbrteknhofstbze` via Supabase MCP `apply_migration`
+- Verified:
+  - **24 tables** in public schema, all RLS-enabled
+  - **13 enums** total
+  - **20 audit triggers** (one on every mutable domain table)
+  - **Seeded**: 11 ECSA outcomes (R-02-PE) + 9 SACPCMP-OFFICIAL_9 KAs + 14 SACPCMP-OPERATIONAL_14 + 16 crosswalks
+
+### Self-Annealing event #8 — current_role reserved keyword
+- **Observed:** Migration failed with `42601 syntax error at or near "current_role"` in `user_profiles`.
+- **Root cause:** `current_role` is a Postgres reserved keyword (per SQL standard) and cannot be used as an unquoted column name.
+- **Action:** Quoted as `"current_role"`. Migration file in repo updated to match applied state. App code accessing this column must always quote it (Supabase JS client uses `select('"current_role"')` syntax automatically when given the column name).
+- **Result:** Migration succeeded on retry. Documented for future migrations adding columns.
+
+### Phase 6 status
+- ✅ Phase-0 (scaffold)
+- ✅ Phase-1 (schema + seeds + RLS + audit)
+- ✅ Phase-2 (handshakes — see Session 2)
+- ⏳ Phase-3 (full auth UI) — magic-link-only stub shipped; full flow pending
+- ⏳ Phase-4 (design system primitives)
+- ⏳ Phases 5-14 — see DEPLOY.md "What's NOT yet built"
+
+### Deployable state
+The app boots, the landing page renders, magic-link sign-in works end-to-end against the production schema. User can deploy to Vercel right now using DEPLOY.md.
+
 ### Next
 1. Receive new project ref.
 2. `apply_migration` for `0001_handshake_bootstrap.sql` via Supabase MCP.
