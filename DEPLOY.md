@@ -98,6 +98,38 @@ npm run dev   # http://localhost:3000
 
 ---
 
+## Email setup (when you hit "email rate limit exceeded")
+
+Supabase's default built-in SMTP is for development only and caps at **~4 emails per hour**. Two options:
+
+### Option A — Quick: set a password and use password sign-in
+
+The `/login` page has both **Password** and **Magic link** tabs. Password sign-in doesn't send emails. To set a password:
+
+1. Open https://supabase.com/dashboard/project/wnwkihbrteknhofstbze/auth/users
+2. Find your user row → click `…` → **Send password recovery** *(also uses SMTP — skip if rate-limited)*
+3. OR click **Add user** → enter email + password directly (this bypasses email entirely).
+4. OR open the user → **Edit user** → set a password.
+
+Now sign in at `/login` → **Password** tab.
+
+### Option B — Proper: configure custom SMTP via Resend (free, ~10 min)
+
+1. Sign up at https://resend.com — free tier = 100 emails/day, 3000/month.
+2. Add and verify a sending domain (or use the test domain for dev).
+3. Create an API key (Settings → API Keys).
+4. Open https://supabase.com/dashboard/project/wnwkihbrteknhofstbze/settings/auth
+5. Scroll to **SMTP Settings** → toggle **Enable Custom SMTP**:
+   - Host: `smtp.resend.com`
+   - Port: `465` (SSL) or `587` (STARTTLS)
+   - Username: `resend`
+   - Password: your Resend API key
+   - Sender email: an address on your verified domain
+   - Sender name: `Pr Logbook Tracker`
+6. Save. Magic links work again, with much higher rate limits.
+
+After Option B, you can return to magic-link sign-in if you prefer it.
+
 ## What's NOT yet built (continues in follow-up sessions)
 
 All of these have full SOPs in `architecture/` and are unblocked by the live schema:
