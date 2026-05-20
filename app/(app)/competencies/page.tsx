@@ -27,9 +27,11 @@ export default async function CompetenciesPage({
 
   const mapByComp: Record<string, { mappings: number; ratings: string[] }> = {};
   for (const m of mappings ?? []) {
-    if (!mapByComp[m.competency_id]) mapByComp[m.competency_id] = { mappings: 0, ratings: [] };
-    mapByComp[m.competency_id].mappings += 1;
-    if (m.self_rating) mapByComp[m.competency_id].ratings.push(m.self_rating);
+    const key = m.competency_id as string;
+    const entry = mapByComp[key] ?? { mappings: 0, ratings: [] as string[] };
+    entry.mappings += 1;
+    if (m.self_rating) entry.ratings.push(m.self_rating);
+    mapByComp[key] = entry;
   }
 
   return (
